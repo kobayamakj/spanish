@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡Hablamos! - スペイン語スピーキング練習 (ハンズフリー常時ONモード)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for celebrate -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* Pulse Animation for Continuous Active Recording */
+        @keyframes pulse-red-continuous {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+            }
+            70% {
+                transform: scale(1.06);
+                box-shadow: 0 0 0 16px rgba(239, 68, 68, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+
+        .continuous-mic-active {
+            animation: pulse-red-continuous 1.8s infinite ease-in-out;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-gradient-to-r from-red-600 via-amber-500 to-yellow-500 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl font-black tracking-wider flex items-center gap-1">
+                    <i class="fa-solid fa-comment-dots text-yellow-200"></i> ¡Hablamos!
+                </span>
+                <span class="text-xs bg-white/20 px-2.5 py-1 rounded-full text-yellow-100 font-medium hidden sm:inline-block">
+                    <i class="fa-solid fa-headset mr-1"></i>ハンズフリー常時ON
+                </span>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <nav class="flex space-x-1 bg-black/10 p-1 rounded-xl backdrop-blur-sm">
+                <button id="tabPracticeBtn" onclick="switchTab('practice')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-white text-red-600 shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-microphone"></i> 練習モード
+                </button>
+                <button id="tabManageBtn" onclick="switchTab('manage')" class="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 text-white hover:bg-white/10 flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check"></i> フレーズ管理
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 md:p-6 flex flex-col justify-start">
+
+        <!-- Browser Support Warning Banner -->
+        <div id="unsupportedWarning" class="hidden mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm">
+            <div class="flex items-start">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mr-3 mt-0.5"></i>
+                <div>
+                    <h3 class="font-bold text-amber-800">お使いのブラウザは音声認識に対応していません</h3>
+                    <p class="text-sm text-amber-700 mt-1">音声入力機能を利用するには、<strong>Google Chrome</strong> または <strong>Microsoft Edge</strong> をご利用ください。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 1: PRACTICE MODE -->
+        <section id="practiceSection" class="space-y-6">
+            <!-- Filter & Progress Header -->
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <label for="practiceCategorySelect" class="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">カテゴリー:</label>
+                    <select id="practiceCategorySelect" onchange="startNewSession()" class="w-full md:w-56 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <option value="all">すべてのカテゴリー</option>
+                    </select>
+                </div>
+
+                <!-- Session Score Progress (Fixed Max 15) -->
+                <div class="flex items-center justify-between md:justify-end space-x-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-clock text-amber-500"></i>
+                        <span id="sessionTimerText" class="font-mono text-xs font-bold text-slate-600">00:00</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-bullseye text-red-500"></i>
+                        <span class="text-xs font-bold text-slate-500">進捗:</span>
+                        <span id="sessionProgressText" class="font-extrabold text-slate-800 font-mono">1 / 15</span>
+                    </div>
+                    <div class="w-24 bg-slate-200 rounded-full h-2.5 overflow-hidden">
+                        <div id="sessionProgressBar" class="bg-gradient-to-r from-red-500 to-amber-500 h-2.5 rounded-full w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flashcard Display -->
+            <div id="flashcardContainer" class="relative bg-white rounded-3xl p-6 md:p-10 shadow-xl border border-slate-100 text-center flex flex-col items-center justify-between min-h-[320px] transition-all">
+                
+                <!-- Card Header (Category tag & Progress) -->
+                <div class="w-full flex justify-between items-center text-xs font-semibold text-slate-400 mb-2">
+                    <span id="cardCategoryBadge" class="bg-red-50 text-red-600 px-3 py-1 rounded-full font-bold">
+                        日常会話
+                    </span>
+                    <span id="cardScoreBadge" class="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-bold">
+                        正解: 0 問
+                    </span>
+                </div>
+
+                <!-- Target Spanish Phrase -->
+                <div class="my-auto py-4 w-full">
+                    <div class="flex items-center justify-center gap-3 mb-2">
+                        <h2 id="targetSpanishText" class="text-3xl md:text-4xl font-extrabold text-slate-800 tracking-wide select-none">
+                            ¡Hola! ¿Cómo estás?
+                        </h2>
+                        <button onclick="playTTS()" title="発音を聞く" class="p-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-full transition-transform active:scale-95 shadow-sm">
+                            <i class="fa-solid fa-volume-high text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Katakana Reading -->
+                    <p id="targetKatakanaText" class="text-slate-400 text-sm font-medium transition-all my-1">
+                        オラ、コモ エスタス？
+                    </p>
+
+                    <!-- Japanese Translation -->
+                    <p id="targetJapaneseText" class="text-slate-600 text-base md:text-lg font-medium mt-3">
+                        こんにちは！お元気ですか？
+                    </p>
+                </div>
+
+                <!-- Controls inside card -->
+                <div class="w-full pt-4 border-t border-slate-100 flex justify-between items-center text-xs">
+                    <button onclick="toggleKatakanaHint()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-semibold px-2 py-1 rounded hover:bg-slate-50">
+                        <i class="fa-solid fa-eye"></i> <span id="hintToggleText">読みガナを隠す</span>
+                    </button>
+                    <button onclick="skipPhrase()" class="text-slate-500 hover:text-red-600 flex items-center gap-1 font-semibold px-2 py-1 rounded hover:bg-slate-50">
+                        スキップ <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Speech Recording Controls (Continuous Mic Mode) -->
+            <div class="bg-white rounded-2xl p-6 shadow-md border border-slate-100 text-center flex flex-col items-center justify-center space-y-4">
+                
+                <!-- Active Mic Indicator Badge -->
+                <div id="continuousStatusBadge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                    マイク停止中 (タップして常時ONを開始)
+                </div>
+
+                <!-- Live Heard Speech Preview -->
+                <div class="w-full min-h-[52px] bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-center justify-center">
+                    <p id="speechLiveText" class="text-sm font-medium text-slate-400 italic">
+                        「マイク開始」を押すと、15問終わるまで自動で聞き取りを続けます
+                    </p>
+                </div>
+
+                <!-- Mic Toggle Button -->
+                <div class="relative">
+                    <button id="micBtn" onclick="toggleContinuousListening()" class="w-20 h-20 bg-gradient-to-tr from-red-600 to-amber-500 hover:from-red-700 hover:to-amber-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform active:scale-95">
+                        <i id="micIcon" class="fa-solid fa-microphone text-3xl"></i>
+                    </button>
+                </div>
+
+                <p id="micStatusText" class="text-xs font-semibold text-slate-500">
+                    タップして常時聞き取りを開始
+                </p>
+
+                <!-- Feedback Result Area -->
+                <div id="feedbackResultArea" class="hidden w-full p-4 rounded-xl text-center transition-all">
+                    <div id="feedbackBadge" class="inline-flex items-center gap-2 font-bold px-4 py-1.5 rounded-full text-sm mb-2"></div>
+                    <p id="feedbackDetailText" class="text-sm font-semibold"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: PHRASE & CATEGORY MANAGEMENT -->
+        <section id="manageSection" class="hidden space-y-6">
+            
+            <!-- Category Management Section -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-folder-plus text-amber-500"></i> カテゴリー管理
+                </h2>
+                <div class="flex flex-wrap gap-2 mb-4" id="categoryChipsContainer">
+                    <!-- Category Chips -->
+                </div>
+                <form onsubmit="handleAddCategory(event)" class="flex gap-2">
+                    <input type="text" id="newCategoryInput" placeholder="新しいカテゴリー名 (例: レストラン)" required class="flex-grow bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm whitespace-nowrap">
+                        <i class="fa-solid fa-plus mr-1"></i> 追加
+                    </button>
+                </form>
+            </div>
+
+            <!-- Phrase List & Add Phrase Form -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-book text-red-500"></i> フレーズ一覧
+                    </h2>
+                    <button onclick="openAddPhraseModal()" class="bg-gradient-to-r from-red-600 to-amber-500 hover:opacity-90 text-white font-bold text-sm px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i> フレーズ新規登録
+                    </button>
+                </div>
+
+                <!-- Filter Header -->
+                <div class="mb-4">
+                    <select id="manageCategoryFilter" onchange="renderPhrasesList()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 w-full md:w-64">
+                        <option value="all">すべてのカテゴリー</option>
+                    </select>
+                </div>
+
+                <!-- Phrases Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="p-3">カテゴリー</th>
+                                <th class="p-3">スペイン語</th>
+                                <th class="p-3">日本語訳 / カタカナ</th>
+                                <th class="p-3 text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="phrasesTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- RESULT MODAL -->
+    <div id="resultModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 md:p-8 shadow-2xl text-center transform transition-all border border-slate-100">
+            
+            <div class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <h2 class="text-2xl font-extrabold text-slate-800 mb-1">¡Buen Trabajo!</h2>
+            <p class="text-sm font-medium text-slate-500 mb-6">15問セッションが完了しました！</p>
+
+            <!-- Score Stats Grid -->
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span class="block text-xs font-bold text-slate-400 mb-1">正解数</span>
+                    <span id="resultScoreText" class="text-xl font-black text-slate-800">0 / 15</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span class="block text-xs font-bold text-slate-400 mb-1">正答率</span>
+                    <span id="resultAccuracyText" class="text-xl font-black text-emerald-600">0%</span>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span class="block text-xs font-bold text-slate-400 mb-1">タイム</span>
+                    <span id="resultTimeText" class="text-xl font-black text-amber-600">00:00</span>
+                </div>
+            </div>
+
+            <!-- Review Summary List -->
+            <div class="text-left mb-6">
+                <h4 class="text-xs font-bold text-slate-400 uppercase mb-2">振り返りリスト</h4>
+                <div id="resultReviewList" class="max-h-48 overflow-y-auto space-y-2 pr-1">
+                    <!-- Dynamic review items -->
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-2">
+                <button onclick="startNewSession(); closeResultModal();" class="flex-1 bg-gradient-to-r from-red-600 to-amber-500 hover:opacity-95 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> もう一度挑戦 (15問)
+                </button>
+                <button onclick="closeResultModal(); switchTab('manage');" class="px-4 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-100 transition-all border border-slate-200">
+                    フレーズ管理へ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / Edit Phrase Modal -->
+    <div id="phraseModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-lg font-bold text-slate-800">フレーズ登録</h3>
+                <button onclick="closePhraseModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <form id="phraseForm" onsubmit="handleSavePhrase(event)" class="space-y-4">
+                <input type="hidden" id="editPhraseId" value="">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">カテゴリー</label>
+                    <select id="modalCategorySelect" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">スペイン語フレーズ</label>
+                    <input type="text" id="modalSpanishInput" required placeholder="例: ¿Dónde está el baño?" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">日本語の意味</label>
+                    <input type="text" id="modalJapaneseInput" required placeholder="例: トイレはどこですか？" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">読みガナ (カタカナ・任意)</label>
+                    <input type="text" id="modalKatakanaInput" placeholder="例: ドンデ エスタ エル バニョ？" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closePhraseModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                        キャンセル
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-700 text-white shadow-md">
+                        保存する
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const MAX_SESSION_QUESTIONS = 15;
+
+        // Default Sample Data
+        const DEFAULT_CATEGORIES = [
+            { id: 'cat_1', name: '日常会話' },
+            { id: 'cat_2', name: '旅行・交通' },
+            { id: 'cat_3', name: '買い物・食事' }
+        ];
+
+        const DEFAULT_PHRASES = [
+            { id: 'p_1', categoryId: 'cat_1', spanish: '¡Hola! ¿Cómo estás?', japanese: 'こんにちは！お元気ですか？', katakana: 'オラ、コモ エスタス？' },
+            { id: 'p_2', categoryId: 'cat_1', spanish: 'Mucho gusto.', japanese: 'はじめまして。', katakana: 'ムチョ グスト' },
+            { id: 'p_3', categoryId: 'cat_1', spanish: 'Muchas gracias.', japanese: 'どうもありがとうございます。', katakana: 'ムーチャス グラシアス' },
+            { id: 'p_4', categoryId: 'cat_1', spanish: 'Por favor.', japanese: 'お願いします。', katakana: 'ポル ファボール' },
+            { id: 'p_5', categoryId: 'cat_1', spanish: 'De nada.', japanese: 'どういたしまして。', katakana: 'デ ナダ' },
+            { id: 'p_6', categoryId: 'cat_1', spanish: 'Hasta luego.', japanese: 'また後で。', katakana: 'アスタ ルエゴ' },
+            { id: 'p_7', categoryId: 'cat_2', spanish: '¿Dónde está el baño?', japanese: 'トイレはどこですか？', katakana: 'ドンデ エスタ エル バニョ？' },
+            { id: 'p_8', categoryId: 'cat_2', spanish: '¿Dónde está la estación?', japanese: '駅はどこですか？', katakana: 'ドンデ エスタ ラ エスタシオン？' },
+            { id: 'p_9', categoryId: 'cat_2', spanish: 'Un billete, por favor.', japanese: '切符を1枚お願いします。', katakana: 'ウン ビジェテ、ポル ファボール' },
+            { id: 'p_10', categoryId: 'cat_2', spanish: '¿Habla inglés?', japanese: '英語を話せますか？', katakana: 'アブラ イングレス？' },
+            { id: 'p_11', categoryId: 'cat_3', spanish: '¿Cuánto cuesta esto?', japanese: 'これはいくらですか？', katakana: 'クアント クエスタ エスト？' },
+            { id: 'p_12', categoryId: 'cat_3', spanish: 'La cuenta, por favor.', japanese: 'お勘定をお願いします。', katakana: 'ラ クエンタ、ポル ファボール' },
+            { id: 'p_13', categoryId: 'cat_3', spanish: 'Está muy delicioso.', japanese: 'とても美味しいです。', katakana: 'エスタ ムイ デリシオソ' },
+            { id: 'p_14', categoryId: 'cat_3', spanish: 'Quiero este, por favor.', japanese: 'これをください。', katakana: 'キエロ エステ、ポル ファボール' },
+            { id: 'p_15', categoryId: 'cat_3', spanish: '¿Tiene menú en inglés?', japanese: '英語のメニューはありますか？', katakana: 'ティエネ メニュー エン イングレス？' },
+            { id: 'p_16', categoryId: 'cat_1', spanish: 'Disculpe.', japanese: 'すみません。', katakana: 'ディスクルペ' }
+        ];
+
+        // State variables
+        let categories = [];
+        let phrases = [];
+        let currentSessionQueue = [];
+        let currentSessionIndex = 0;
+        let sessionResultsHistory = [];
+        let sessionStartTime = null;
+        let timerInterval = null;
+
+        // Continuous Speech Recognition States
+        let recognition = null;
+        let isContinuousModeDesired = false; // User clicked start continuous listening
+        let isRecognitionEngineRunning = false;
+        let isAdvancingQuestion = false; // Prevent race conditions during auto-advance
+        let hideKatakana = false;
+
+        // Audio Context
+        let audioCtx = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            initWebSpeechAPI();
+            renderCategorySelects();
+            renderCategoryChips();
+            startNewSession();
+            renderPhrasesList();
+        });
+
+        function loadData() {
+            const savedCategories = localStorage.getItem('hablamos_categories');
+            const savedPhrases = localStorage.getItem('hablamos_phrases');
+
+            categories = savedCategories ? JSON.parse(savedCategories) : [...DEFAULT_CATEGORIES];
+            phrases = savedPhrases ? JSON.parse(savedPhrases) : [...DEFAULT_PHRASES];
+
+            saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem('hablamos_categories', JSON.stringify(categories));
+            localStorage.setItem('hablamos_phrases', JSON.stringify(phrases));
+        }
+
+        // Web Audio Effects
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playSuccessSound() {
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                osc.frequency.setValueAtTime(1046.50, now + 0.3); // C6
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function playErrorSound() {
+            try {
+                const ctx = getAudioContext();
+                const now = ctx.currentTime;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(180, now);
+                osc.frequency.setValueAtTime(140, now + 0.15);
+
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.35);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Speech Recognition Setup with Continuous Listening Logic
+        function initWebSpeechAPI() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (!SpeechRecognition) {
+                document.getElementById('unsupportedWarning').classList.remove('hidden');
+                document.getElementById('micBtn').disabled = true;
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true; // Continuous listening
+            recognition.interimResults = true;
+            recognition.lang = 'es-ES'; // Spanish
+
+            recognition.onstart = () => {
+                isRecognitionEngineRunning = true;
+                updateContinuousMicUI();
+            };
+
+            recognition.onresult = (event) => {
+                if (isAdvancingQuestion) return; // ignore speech while switching card
+
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                const currentText = finalTranscript || interimTranscript;
+                if (currentText) {
+                    document.getElementById('speechLiveText').textContent = `「${currentText}」`;
+                    document.getElementById('speechLiveText').className = "text-sm font-semibold text-slate-800";
+                }
+
+                if (finalTranscript) {
+                    evaluateSpeech(finalTranscript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("Speech Recognition Event Error:", event.error);
+                if (event.error === 'not-allowed') {
+                    isContinuousModeDesired = false;
+                    updateContinuousMicUI();
+                    alert("マイクの使用許可が必要です。ブラウザの設定で許可してください。");
+                }
+            };
+
+            recognition.onend = () => {
+                isRecognitionEngineRunning = false;
+
+                // If user wants continuous listening and hasn't finished session, automatically restart!
+                if (isContinuousModeDesired && currentSessionIndex < currentSessionQueue.length) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Auto restart failed:", e);
+                    }
+                } else {
+                    updateContinuousMicUI();
+                }
+            };
+        }
+
+        function toggleContinuousListening() {
+            if (!recognition) return;
+
+            isContinuousModeDesired = !isContinuousModeDesired;
+
+            if (isContinuousModeDesired) {
+                try {
+                    getAudioContext(); // Resume audio context
+                    document.getElementById('feedbackResultArea').classList.add('hidden');
+                    if (!isRecognitionEngineRunning) {
+                        recognition.start();
+                    }
+                } catch (e) {
+                    console.error("Start continuous listening failed", e);
+                }
+            } else {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    console.error("Stop error", e);
+                }
+            }
+            updateContinuousMicUI();
+        }
+
+        function updateContinuousMicUI() {
+            const micBtn = document.getElementById('micBtn');
+            const micIcon = document.getElementById('micIcon');
+            const statusText = document.getElementById('micStatusText');
+            const statusBadge = document.getElementById('continuousStatusBadge');
+
+            if (isContinuousModeDesired && isRecognitionEngineRunning) {
+                micBtn.classList.add('continuous-mic-active', 'from-red-500', 'to-red-700');
+                micIcon.className = "fa-solid fa-pause text-3xl";
+                statusText.textContent = "15問終了まで常時ON中 (タップで一時停止)";
+                statusText.className = "text-xs font-bold text-red-600";
+
+                statusBadge.className = "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200";
+                statusBadge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span> マイク起動中 (常時ONモード)`;
+
+            } else if (isContinuousModeDesired && !isRecognitionEngineRunning) {
+                // Connecting/restarting
+                statusBadge.className = "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200";
+                statusBadge.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 音声認識に接続中...`;
+
+            } else {
+                // Off
+                micBtn.classList.remove('continuous-mic-active', 'from-red-500', 'to-red-700');
+                micIcon.className = "fa-solid fa-microphone text-3xl";
+                statusText.textContent = "タップして15問ハンズフリー練習を開始";
+                statusText.className = "text-xs font-semibold text-slate-500";
+
+                statusBadge.className = "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200";
+                statusBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-slate-400"></span> マイク停止中`;
+            }
+        }
+
+        // Match Evaluation Logic
+        function normalizeSpanish(str) {
+            return str
+                .toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[¡!¿?.,;:]/g, "")
+                .replace(/\s+/g, " ")
+                .trim();
+        }
+
+        function getSimilarityRatio(s1, s2) {
+            const str1 = normalizeSpanish(s1);
+            const str2 = normalizeSpanish(s2);
+            if (str1 === str2) return 1.0;
+            if (!str1.length || !str2.length) return 0.0;
+
+            const track = Array(str2.length + 1).fill(null).map(() =>
+                Array(str1.length + 1).fill(null));
+
+            for (let i = 0; i <= str1.length; i += 1) track[0][i] = i;
+            for (let j = 0; j <= str2.length; j += 1) track[j][0] = j;
+
+            for (let j = 1; j <= str2.length; j += 1) {
+                for (let i = 1; i <= str1.length; i += 1) {
+                    const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                    track[j][i] = Math.min(
+                        track[j][i - 1] + 1,
+                        track[j - 1][i] + 1,
+                        track[j - 1][i - 1] + indicator
+                    );
+                }
+            }
+
+            const distance = track[str2.length][str1.length];
+            const maxLength = Math.max(str1.length, str2.length);
+            return (maxLength - distance) / maxLength;
+        }
+
+        function evaluateSpeech(spokenText) {
+            if (!currentSessionQueue.length || isAdvancingQuestion) return;
+
+            const currentPhrase = currentSessionQueue[currentSessionIndex];
+            const similarity = getSimilarityRatio(spokenText, currentPhrase.spanish);
+
+            const feedbackArea = document.getElementById('feedbackResultArea');
+            const feedbackBadge = document.getElementById('feedbackBadge');
+            const feedbackDetail = document.getElementById('feedbackDetailText');
+
+            feedbackArea.classList.remove('hidden');
+
+            const isCorrect = similarity >= 0.78;
+
+            if (isCorrect) {
+                isAdvancingQuestion = true; // block multiple inputs
+                playSuccessSound();
+
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 35, spread: 50, origin: { y: 0.7 } });
+                }
+
+                feedbackArea.className = "w-full p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-center";
+                feedbackBadge.className = "inline-flex items-center gap-1.5 font-bold px-4 py-1 rounded-full text-sm bg-emerald-100 text-emerald-800";
+                feedbackBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> ¡Excelente! (正解) 次へ...`;
+                feedbackDetail.className = "text-sm font-semibold text-emerald-700 mt-1";
+                feedbackDetail.textContent = `一致率: ${Math.round(similarity * 100)}%`;
+
+                // Record Result
+                sessionResultsHistory[currentSessionIndex] = {
+                    phrase: currentPhrase,
+                    spokenText: spokenText,
+                    isCorrect: true
+                };
+
+                // Automatically Advance to next question after 1.5 seconds!
+                setTimeout(() => {
+                    isAdvancingQuestion = false;
+                    advanceNextQuestion();
+                }, 1500);
+
+            } else {
+                // Incorrect - Keep microphone active and let user retry!
+                playErrorSound();
+
+                feedbackArea.className = "w-full p-4 rounded-2xl bg-rose-50 border border-rose-200 text-center";
+                feedbackBadge.className = "inline-flex items-center gap-1.5 font-bold px-4 py-1 rounded-full text-sm bg-rose-100 text-rose-800";
+                feedbackBadge.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> もう一度話してください！`;
+                feedbackDetail.className = "text-sm font-semibold text-rose-700 mt-1";
+                feedbackDetail.textContent = `認識: 「${spokenText}」（一致率: ${Math.round(similarity * 100)}%）`;
+
+                // Track attempt as incorrect unless corrected later
+                if (!sessionResultsHistory[currentSessionIndex]) {
+                    sessionResultsHistory[currentSessionIndex] = {
+                        phrase: currentPhrase,
+                        spokenText: spokenText,
+                        isCorrect: false
+                    };
+                }
+            }
+        }
+
+        function startNewSession() {
+            // Stop active speech recognition temporarily when resetting
+            if (recognition && isRecognitionEngineRunning) {
+                try { recognition.stop(); } catch(e){}
+            }
+
+            const selectedCat = document.getElementById('practiceCategorySelect').value;
+            let pool = phrases;
+
+            if (selectedCat !== 'all') {
+                pool = phrases.filter(p => p.categoryId === selectedCat);
+            }
+
+            const shuffled = [...pool].sort(() => 0.5 - Math.random());
+            currentSessionQueue = shuffled.slice(0, MAX_SESSION_QUESTIONS);
+
+            currentSessionIndex = 0;
+            sessionResultsHistory = [];
+            isAdvancingQuestion = false;
+
+            // Timer reset
+            if (timerInterval) clearInterval(timerInterval);
+            sessionStartTime = Date.now();
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+            updateTimerDisplay();
+
+            renderCurrentFlashcard();
+
+            // Restart continuous listening if user had continuous mode on
+            if (isContinuousModeDesired && recognition) {
+                setTimeout(() => {
+                    try { recognition.start(); } catch(e){}
+                }, 300);
+            }
+        }
+
+        function updateTimerDisplay() {
+            if (!sessionStartTime) return;
+            const elapsedSeconds = Math.floor((Date.now() - sessionStartTime) / 1000);
+            const mins = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+            const secs = String(elapsedSeconds % 60).padStart(2, '0');
+            document.getElementById('sessionTimerText').textContent = `${mins}:${secs}`;
+        }
+
+        function renderCurrentFlashcard() {
+            document.getElementById('feedbackResultArea').classList.add('hidden');
+            
+            if (isContinuousModeDesired) {
+                document.getElementById('speechLiveText').textContent = "音声を聞き取り中... 発音してください";
+                document.getElementById('speechLiveText').className = "text-sm font-medium text-red-600 animate-pulse";
+            } else {
+                document.getElementById('speechLiveText').textContent = "「マイク開始」を押すと、15問終わるまで自動で聞き取りを続けます";
+                document.getElementById('speechLiveText').className = "text-sm font-medium text-slate-400 italic";
+            }
+
+            const totalInSession = currentSessionQueue.length;
+
+            if (totalInSession === 0) {
+                document.getElementById('targetSpanishText').textContent = "フレーズがありません";
+                document.getElementById('targetJapaneseText').textContent = "選択されたカテゴリーにフレーズがありません。";
+                document.getElementById('targetKatakanaText').textContent = "";
+                document.getElementById('cardCategoryBadge').textContent = "-";
+                document.getElementById('sessionProgressText').textContent = "0 / 0";
+                document.getElementById('sessionProgressBar').style.width = "0%";
+                return;
+            }
+
+            const phrase = currentSessionQueue[currentSessionIndex];
+            const cat = categories.find(c => c.id === phrase.categoryId);
+
+            document.getElementById('targetSpanishText').textContent = phrase.spanish;
+            document.getElementById('targetJapaneseText').textContent = phrase.japanese;
+            document.getElementById('targetKatakanaText').textContent = phrase.katakana || "";
+            document.getElementById('cardCategoryBadge').textContent = cat ? cat.name : "全般";
+
+            const currentNumber = currentSessionIndex + 1;
+            document.getElementById('sessionProgressText').textContent = `${currentNumber} / ${totalInSession}`;
+            
+            const progressPercent = (currentNumber / totalInSession) * 100;
+            document.getElementById('sessionProgressBar').style.width = `${progressPercent}%`;
+
+            const correctCount = sessionResultsHistory.filter(r => r && r.isCorrect).length;
+            document.getElementById('cardScoreBadge').textContent = `正解: ${correctCount} / ${totalInSession}`;
+
+            toggleKatakanaVisibility();
+        }
+
+        function skipPhrase() {
+            if (!currentSessionQueue.length || isAdvancingQuestion) return;
+
+            const currentPhrase = currentSessionQueue[currentSessionIndex];
+            if (!sessionResultsHistory[currentSessionIndex]) {
+                sessionResultsHistory[currentSessionIndex] = {
+                    phrase: currentPhrase,
+                    spokenText: "パス / スキップ",
+                    isCorrect: false
+                };
+            }
+            advanceNextQuestion();
+        }
+
+        function advanceNextQuestion() {
+            if (currentSessionIndex + 1 < currentSessionQueue.length) {
+                currentSessionIndex++;
+                renderCurrentFlashcard();
+            } else {
+                // SESSION COMPLETE!
+                finishSession();
+            }
+        }
+
+        function finishSession() {
+            if (timerInterval) clearInterval(timerInterval);
+
+            // Turn off continuous microphone at session end
+            isContinuousModeDesired = false;
+            if (recognition) {
+                try { recognition.stop(); } catch(e){}
+            }
+
+            const total = currentSessionQueue.length;
+            const correctCount = sessionResultsHistory.filter(r => r && r.isCorrect).length;
+            const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+            const timeFormatted = document.getElementById('sessionTimerText').textContent;
+
+            document.getElementById('resultScoreText').textContent = `${correctCount} / ${total}`;
+            document.getElementById('resultAccuracyText').textContent = `${accuracy}%`;
+            document.getElementById('resultTimeText').textContent = timeFormatted;
+
+            const reviewContainer = document.getElementById('resultReviewList');
+            reviewContainer.innerHTML = sessionResultsHistory.map((res, idx) => {
+                const phrase = res ? res.phrase : currentSessionQueue[idx];
+                const isCorrect = res ? res.isCorrect : false;
+
+                return `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl border ${isCorrect ? 'bg-emerald-50/50 border-emerald-100' : 'bg-rose-50/50 border-rose-100'} text-xs">
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <i class="${isCorrect ? 'fa-solid fa-check text-emerald-600' : 'fa-solid fa-xmark text-rose-500'} font-bold text-sm"></i>
+                            <div class="truncate">
+                                <p class="font-bold text-slate-800 truncate">${phrase.spanish}</p>
+                                <p class="text-slate-500 truncate">${phrase.japanese}</p>
+                            </div>
+                        </div>
+                        <span class="font-semibold text-slate-400 whitespace-nowrap ml-2">${isCorrect ? '正解' : '不正解'}</span>
+                    </div>
+                `;
+            }).join('');
+
+            if (accuracy >= 70 && typeof confetti === 'function') {
+                confetti({ particleCount: 100, spread: 80, origin: { y: 0.5 } });
+            }
+
+            document.getElementById('resultModal').classList.remove('hidden');
+        }
+
+        function closeResultModal() {
+            document.getElementById('resultModal').classList.add('hidden');
+        }
+
+        function playTTS() {
+            if (!currentSessionQueue.length) return;
+            const text = currentSessionQueue[currentSessionIndex].spanish;
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'es-ES';
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function toggleKatakanaHint() {
+            hideKatakana = !hideKatakana;
+            toggleKatakanaVisibility();
+        }
+
+        function toggleKatakanaVisibility() {
+            const katakanaElem = document.getElementById('targetKatakanaText');
+            const hintBtnText = document.getElementById('hintToggleText');
+
+            if (hideKatakana) {
+                katakanaElem.classList.add('invisible');
+                hintBtnText.textContent = "読みガナを表示";
+            } else {
+                katakanaElem.classList.remove('invisible');
+                hintBtnText.textContent = "読みガナを隠す";
+            }
+        }
+
+        // Category & Phrase Management JS Functions
+        function renderCategorySelects() {
+            const practiceSelect = document.getElementById('practiceCategorySelect');
+            const manageFilterSelect = document.getElementById('manageCategoryFilter');
+            const modalSelect = document.getElementById('modalCategorySelect');
+
+            const currentPracticeVal = practiceSelect.value;
+            const currentManageVal = manageFilterSelect.value;
+
+            practiceSelect.innerHTML = `<option value="all">すべてのカテゴリー</option>` +
+                categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            practiceSelect.value = currentPracticeVal || 'all';
+
+            manageFilterSelect.innerHTML = `<option value="all">すべてのカテゴリー</option>` +
+                categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            manageFilterSelect.value = currentManageVal || 'all';
+
+            modalSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        }
+
+        function renderCategoryChips() {
+            const container = document.getElementById('categoryChipsContainer');
+            container.innerHTML = categories.map(c => `
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                    ${c.name}
+                    <button onclick="deleteCategory('${c.id}')" class="text-slate-400 hover:text-red-500 ml-1">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </span>
+            `).join('');
+        }
+
+        function handleAddCategory(e) {
+            e.preventDefault();
+            const input = document.getElementById('newCategoryInput');
+            const name = input.value.trim();
+            if (!name) return;
+
+            categories.push({ id: 'cat_' + Date.now(), name });
+            saveData();
+            input.value = '';
+
+            renderCategorySelects();
+            renderCategoryChips();
+        }
+
+        function deleteCategory(catId) {
+            if (categories.length <= 1) {
+                alert("最低1つのカテゴリーが必要です。");
+                return;
+            }
+
+            if (confirm("このカテゴリーを削除しますか？")) {
+                categories = categories.filter(c => c.id !== catId);
+                phrases = phrases.filter(p => p.categoryId !== catId);
+                saveData();
+                renderCategorySelects();
+                renderCategoryChips();
+                startNewSession();
+                renderPhrasesList();
+            }
+        }
+
+        function renderPhrasesList() {
+            const filterCat = document.getElementById('manageCategoryFilter').value;
+            const tableBody = document.getElementById('phrasesTableBody');
+
+            let filtered = phrases;
+            if (filterCat !== 'all') {
+                filtered = phrases.filter(p => p.categoryId === filterCat);
+            }
+
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="p-6 text-center text-slate-400 italic">フレーズが見つかりません</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = filtered.map(p => {
+                const cat = categories.find(c => c.id === p.categoryId);
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-3">
+                            <span class="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-amber-200">
+                                ${cat ? cat.name : '未分類'}
+                            </span>
+                        </td>
+                        <td class="p-3 font-semibold text-slate-800">${p.spanish}</td>
+                        <td class="p-3 text-slate-600">
+                            <div>${p.japanese}</div>
+                            ${p.katakana ? `<div class="text-xs text-slate-400 mt-0.5">${p.katakana}</div>` : ''}
+                        </td>
+                        <td class="p-3 text-right space-x-2">
+                            <button onclick="openEditPhraseModal('${p.id}')" class="text-slate-400 hover:text-blue-600 p-1">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deletePhrase('${p.id}')" class="text-slate-400 hover:text-red-600 p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddPhraseModal() {
+            document.getElementById('modalTitle').textContent = "フレーズ新規登録";
+            document.getElementById('editPhraseId').value = "";
+            document.getElementById('phraseForm').reset();
+            renderCategorySelects();
+            document.getElementById('phraseModal').classList.remove('hidden');
+        }
+
+        function openEditPhraseModal(id) {
+            const phrase = phrases.find(p => p.id === id);
+            if (!phrase) return;
+
+            renderCategorySelects();
+            document.getElementById('modalTitle').textContent = "フレーズの編集";
+            document.getElementById('editPhraseId').value = phrase.id;
+            document.getElementById('modalCategorySelect').value = phrase.categoryId;
+            document.getElementById('modalSpanishInput').value = phrase.spanish;
+            document.getElementById('modalJapaneseInput').value = phrase.japanese;
+            document.getElementById('modalKatakanaInput').value = phrase.katakana || "";
+
+            document.getElementById('phraseModal').classList.remove('hidden');
+        }
+
+        function closePhraseModal() {
+            document.getElementById('phraseModal').classList.add('hidden');
+        }
+
+        function handleSavePhrase(e) {
+            e.preventDefault();
+
+            const editId = document.getElementById('editPhraseId').value;
+            const categoryId = document.getElementById('modalCategorySelect').value;
+            const spanish = document.getElementById('modalSpanishInput').value.trim();
+            const japanese = document.getElementById('modalJapaneseInput').value.trim();
+            const katakana = document.getElementById('modalKatakanaInput').value.trim();
+
+            if (editId) {
+                const index = phrases.findIndex(p => p.id === editId);
+                if (index !== -1) {
+                    phrases[index] = { id: editId, categoryId, spanish, japanese, katakana };
+                }
+            } else {
+                phrases.push({ id: 'p_' + Date.now(), categoryId, spanish, japanese, katakana });
+            }
+
+            saveData();
+            closePhraseModal();
+            renderPhrasesList();
+            startNewSession();
+        }
+
+        function deletePhrase(id) {
+            if (confirm("このフレーズを削除しますか？")) {
+                phrases = phrases.filter(p => p.id !== id);
+                saveData();
+                renderPhrasesList();
+                startNewSession();
+            }
+        }
+
+        function switchTab(tab) {
+            const practiceTabBtn = document.getElementById('tabPracticeBtn');
+            const manageTabBtn = document.getElementById('tabManageBtn');
+            const practiceSection = document.getElementById('practiceSection');
+            const manageSection = document.getElementById('manageSection');
+
+            if (tab === 'practice') {
+                practiceSection.classList.remove('hidden');
+                manageSection.classList.add('hidden');
+
+                practiceTabBtn.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-white text-red-600 shadow-sm flex items-center gap-1.5";
+                manageTabBtn.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 text-white hover:bg-white/10 flex items-center gap-1.5";
+            } else {
+                practiceSection.classList.add('hidden');
+                manageSection.classList.remove('hidden');
+
+                // Stop microphone when moving to phrase management
+                if (isContinuousModeDesired && recognition) {
+                    toggleContinuousListening();
+                }
+
+                manageTabBtn.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-white text-red-600 shadow-sm flex items-center gap-1.5";
+                practiceTabBtn.className = "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 text-white hover:bg-white/10 flex items-center gap-1.5";
+            }
+        }
+    </script>
+</body>
+</html>
